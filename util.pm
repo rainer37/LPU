@@ -1,5 +1,13 @@
+use strict;
+use warnings;
 package Util;
 # chop last char of str.
+
+our $URL_3D = 'https://kaijiang.500.com/sd.shtml';
+our $URL_PLS = 'https://kaijiang.500.com/pls.shtml';
+our $FILE_3D = 'data/numbers.txt';
+our $FILE_PLS = 'data/n.txt';
+
 sub chop_last {
 	my $str = reverse shift;
 	chop $str && reverse $str;
@@ -15,10 +23,12 @@ sub chop_last {
 # 123 240 711
 # 123 758 831
 # 123 611 823
+
 # 123 335 039
 # 123 534 667
 # 123 626 038
 # 123 155 088
+
 # 123 936 513
 # 123 650 817
 # 123 813 414

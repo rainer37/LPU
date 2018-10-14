@@ -4,11 +4,7 @@ use warnings;
 use Schedule::Cron;
 use LWP::UserAgent ();
 use Path::Tiny;
-
-our $URL_3D = 'https://kaijiang.500.com/sd.shtml';
-our $URL_PLS = 'https://kaijiang.500.com/pls.shtml';
-our $FILE_3D = 'data/numbers.txt';
-our $FILE_PLS = 'data/n.txt';
+use Util;
 
 $ENV{'PERL_LWP_SSL_VERIFY_HOSTNAME'} = 0;
 
@@ -48,9 +44,9 @@ sub grab {
 	print "grabbing...\n";
 	my $ua = LWP::UserAgent->new;
 	# update 3D
-	grab_routine $ua, $URL_3D, $FILE_3D;
+	grab_routine $ua, $Util::URL_3D, $Util::FILE_3D;
 	# update pai lie san
-	grab_routine $ua, $URL_PLS, $FILE_PLS;
+	grab_routine $ua, $Util::URL_PLS, $Util::FILE_PLS;
 }
 
 1;

@@ -23,21 +23,36 @@ sub get_numbers {
 	\@n;
 }
 
+# get number in string format.
+sub get_numbers_reg {
+    open FD_3D, '<', shift;
+    my @n;
+    while (<FD_3D>) {
+        chomp;
+        #my @num = split /\s/, $_;
+        push @n, $_;
+    }
+    \@n;
+}
+
+# params: 	$n, ref of data array, $i, bsg index [0-2]
+#			$bb, $ss, $gg are target digits to be matched.
+# finding all the occurrence in the history that matched the target digits.
 sub get_cell {
-    my ($n, $i, $bb, $s, $g) = @_;
+    my ($n, $i, $bb, $ss, $gg) = @_;
     my @nn = @{$n}; # de-ref to @nn
     my $data_len = @nn;
 	#print "$bb:$s:$g:$data_len\n";
 	my @m;
 	for (my $j=0;$j<$data_len-5;$j++) {
 		# print "$i $j $b $nn[$j][$i]\n";
-		if ($bb == $nn[$j][$i] && $s == $nn[$j+1][$i] && $g == $nn[$j+2][$i]) {
+		if ($bb == $nn[$j][$i] && $ss == $nn[$j+1][$i] && $gg == $nn[$j+2][$i]) {
 			# print "match\n";
 			my $abc_sum = ( $nn[$j+3][$i] + $nn[$j+4][$i] + $nn[$j+5][$i] ) % 8;
 			my $def_sum = ( $nn[$j-1][0] + $nn[$j-1][1] + $nn[$j-1][2] ) % 8;
 			my $all_sum = ( $abc_sum + $def_sum ) % 8;
 			# print "$abc_sum\n";
-			my @s = split //, "$bb$s$g$abc_sum$nn[$j+3][$i]$nn[$j+4][$i]$nn[$j+5][$i]".
+			my @s = split //, "$bb$ss$gg$abc_sum$nn[$j+3][$i]$nn[$j+4][$i]$nn[$j+5][$i]".
                                 "$def_sum$nn[$j-1][0]$nn[$j-1][1]$nn[$j-1][2]$all_sum\n";
 			print @s;
 			push @m, \@s;
@@ -48,23 +63,36 @@ sub get_cell {
 	@m;
 }
 
-# params:   $n, ref of nn array
-#           $i, $j indices in array
-sub find_match {
-    my @nn = @{shift};
-    my ($i, $j) = @_;
-    # print "$i $j $b $nn[$j][$i]\n";
-    if ($bb == $nn[$j][$i] && $s == $nn[$j+1][$i] && $g == $nn[$j+2][$i]) {
-        # print "match\n";
-        my $abc_sum = ( $nn[$j+3][$i] + $nn[$j+4][$i] + $nn[$j+5][$i] ) % 8;
-        my $def_sum = ( $nn[$j-1][0] + $nn[$j-1][1] + $nn[$j-1][2] ) % 8;
-        my $all_sum = ( $abc_sum + $def_sum ) % 8;
-        # print "$abc_sum\n";
-        my @s = split //, "$bb$s$g$abc_sum$nn[$j+3][$i]$nn[$j+4][$i]$nn[$j+5][$i]".
-            "$def_sum$nn[$j-1][0]$nn[$j-1][1]$nn[$j-1][2]$all_sum\n";
-        print @s;
-        push @m, \@s;
+# format matched result to the same as regular match.
+# params: @str, matched string, $bsg, target.
+sub format_match {
+    my $bsg = pop @_;
+    my @str = @_;
+    my @m;
+    for (@m = split "a", (join "", @str)) {
+        $_ = $bsg.substr($_, 3, 3).substr($_, 0, 3)."\n";
     }
+    @m;
+}
+
+# get matching cells with regex.
+# params: $n, data array, $bsg, target.
+sub get_cell_reg {
+    my ($n, $bb, $ss, $gg) = @_;
+    my @nn = @{$n};
+    my $str = join "\n", @{nn};
+    my $bsg = $bb.$ss.$gg;
+    my @m;
+    $str =~ s/\n/a/g; # replace \n to a;
+    $str =~ s/\s//g;  # remove whitespace;
+    my @ss = $str =~ /a(\d)(\d)(\d)a$bb\d\da$ss\d\da$gg\d\da(\d)\d\da(\d)\d\da(\d)\d\d(a)/g;
+    push @m, format_match @ss, $bsg;
+    @ss = $str =~ /a(\d)(\d)(\d)a\d$bb\da\d$ss\da\d$gg\da\d(\d)\da\d(\d)\da\d(\d)\d(a)/g;
+    push @m, format_match @ss, $bsg;
+    @ss = $str =~ /a(\d)(\d)(\d)a\d\d${bb}a\d\d${ss}a\d\d${gg}a\d\d(\d)a\d\d(\d)a\d\d(\d)(a)/g;
+    push @m, format_match @ss, $bsg;
+    # print @m;
+    \@m;
 }
 
 # params: 	$nn, reference of data array.
@@ -73,11 +101,11 @@ sub find_match {
 # specified by target. 
 sub base_compute {
 	my ($nn, @bsg) = @_;
-    # print "$bb, $ss, $gg, ${@$nn[0]}[2]\n";
-	my @one = get_cell $nn, $BB, @bsg;
-	print "Test: $one[0][4]\n";
-	#get_cell $nn, $BS, $b, $s, $g;
-	#get_cell $nn, $BG, $b, $s, $g;
+    my %r; # hash of reference of matching results.
+    $r{"B"} = get_cell_reg $nn, @bsg[0..2];
+    $r{"S"} = get_cell_reg $nn, @bsg[3..5];
+    $r{"G"} = get_cell_reg $nn, @bsg[6..8];
+    %r;
 }
 
 # computation routing dispatcher.
@@ -85,13 +113,12 @@ sub compute {
 	my $id = shift;
 	my @nine = split //, get_nine shift;
 	# print "id: $id nine: @nine[0..2]\n";
-	my $nn = get_numbers $Grabber::FILE_3D;
+	my $nn = get_numbers_reg $Util::FILE_3D;
     # my $s1 = @nn;
-    # print "$s1 \n";
-	print $nn."\n";
 
 	if ($id == 0) {
-		base_compute $nn, @nine[0..2];
+        my %r = base_compute $nn, @nine;
+        print $r{"B"}[1];
 	} else {
 		&feature_BSG;
 	}
